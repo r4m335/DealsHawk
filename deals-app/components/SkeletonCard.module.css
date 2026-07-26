@@ -1,0 +1,86 @@
+/* Shimmer keyframe */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Shared shimmer mixin via a CSS custom property trick */
+.image,
+.pill,
+.titleLine,
+.titleLineShort,
+.price,
+.oldPrice,
+.btn {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.10) 40%,
+    rgba(255,255,255,0.04) 80%
+  );
+  background-size: 600px 100%;
+  animation: shimmer 1.6s infinite linear;
+  border-radius: 6px;
+}
+
+.image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+}
+
+.body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pill {
+  width: 72px;
+  height: 20px;
+  border-radius: 99px;
+}
+
+.titleLine {
+  width: 100%;
+  height: 14px;
+}
+
+.titleLineShort {
+  width: 65%;
+  height: 14px;
+}
+
+.pricingRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.price {
+  width: 80px;
+  height: 22px;
+}
+
+.oldPrice {
+  width: 50px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+.btn {
+  width: 100%;
+  height: 42px;
+  border-radius: var(--radius-btn);
+  margin-top: 4px;
+}

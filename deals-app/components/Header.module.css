@@ -1,0 +1,99 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(8, 12, 20, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+}
+
+.inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* ─── Logo ─────────────────────────────────────────────────── */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+  user-select: none;
+}
+
+.logoIcon {
+  font-size: 28px;
+  filter: drop-shadow(0 0 8px rgba(255, 200, 0, 0.7));
+  animation: spark 3s ease-in-out infinite;
+}
+
+@keyframes spark {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(255, 200, 0, 0.7)); }
+  50%       { filter: drop-shadow(0 0 16px rgba(255, 200, 0, 1)); }
+}
+
+.logoText {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.logoAccent {
+  background: linear-gradient(135deg, #ff7940, #ff4060);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Live indicator ─────────────────────────────────────── */
+.liveIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(62, 255, 160, 0.08);
+  border: 1px solid rgba(62, 255, 160, 0.25);
+  border-radius: 99px;
+  padding: 4px 12px;
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+  animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.liveText {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--accent-green);
+}
+
+/* ─── Tagline ────────────────────────────────────────────── */
+.tagline {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 400;
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .tagline { display: block; }
+}
