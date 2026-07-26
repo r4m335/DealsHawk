@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd deals-app && npm run build",
+  "outputDirectory": "deals-app/.next",
+  "installCommand": "cd deals-app && npm install"
+}
