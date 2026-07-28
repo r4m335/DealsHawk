@@ -66,7 +66,7 @@ async def fetch_and_sync_cuelinks_deals(limit: int = 50) -> int:
                 if not title or not affiliate_url:
                     continue
 
-                # 1. Detect store
+                # 1. Detect store (ONLY Amazon, Flipkart, Myntra, Ajio)
                 store = detect_store(raw_url)
                 if store == "other" and campaign:
                     camp_lower = campaign.lower()
@@ -78,6 +78,9 @@ async def fetch_and_sync_cuelinks_deals(limit: int = 50) -> int:
                         store = "myntra"
                     elif "ajio" in camp_lower:
                         store = "ajio"
+
+                if store not in ("amazon", "flipkart", "myntra", "ajio"):
+                    continue
 
                 # 2. Check if deal already in DB
                 if await deal_exists(affiliate_url):
@@ -96,12 +99,13 @@ async def fetch_and_sync_cuelinks_deals(limit: int = 50) -> int:
                         "discount_pct": 20,
                         "store": store,
                         "affiliate_url": affiliate_url,
-                        "category": "general",
+                        "category": "cuelinks",
                         "is_hot": False,
                     }
                 else:
                     deal["affiliate_url"] = affiliate_url
                     deal["store"] = store
+                    deal["category"] = "cuelinks"
 
                 # Image URL handling from Cuelinks
                 img = offer.get("image_url")

@@ -13,9 +13,10 @@ const DISCOUNT_OPTIONS = [0, 40, 50, 60, 70];
 
 export default function DealsGrid() {
   // ── Filter state ──────────────────────────────────────────
-  const [activeStore, setActiveStore]   = useState('all');
-  const [search, setSearch]             = useState('');
-  const [minDiscount, setMinDiscount]   = useState(0);
+  const [activeFeedSource, setActiveFeedSource] = useState('all'); // 'all' | 'telegram' | 'cuelinks'
+  const [activeStore, setActiveStore]           = useState('all');
+  const [search, setSearch]                     = useState('');
+  const [minDiscount, setMinDiscount]           = useState(0);
 
   // ── Data state ────────────────────────────────────────────
   const [deals, setDeals]               = useState([]);
@@ -107,14 +108,28 @@ export default function DealsGrid() {
   }, [fetchDeals, setupRealtime]);
 
   // ── Filter logic ──────────────────────────────────────────
+  const ALLOWED_STORES = ['amazon', 'flipkart', 'myntra', 'ajio'];
+
   const filtered = useMemo(() => {
     return deals.filter(d => {
-      const matchStore    = activeStore === 'all' || d.store === activeStore;
-      const matchSearch   = d.title.toLowerCase().includes(search.toLowerCase());
+      // 1. Strict 4-store check
+      if (!ALLOWED_STORES.includes(d.store)) return false;
+
+      // 2. Feed Source filter (Telegram vs Cuelinks)
+      const matchSource = activeFeedSource === 'all' ||
+        (activeFeedSource === 'telegram' && d.category !== 'cuelinks') ||
+        (activeFeedSource === 'cuelinks' && d.category === 'cuelinks');
+
+      // 3. Store filter
+      const matchStore = activeStore === 'all' || d.store === activeStore;
+
+      // 4. Search & Discount filter
+      const matchSearch = d.title.toLowerCase().includes(search.toLowerCase());
       const matchDiscount = (d.discount_pct ?? 0) >= minDiscount;
-      return matchStore && matchSearch && matchDiscount;
+
+      return matchSource && matchStore && matchSearch && matchDiscount;
     });
-  }, [deals, activeStore, search, minDiscount]);
+  }, [deals, activeFeedSource, activeStore, search, minDiscount]);
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -126,6 +141,28 @@ export default function DealsGrid() {
           ⚠️ Couldn't reach Supabase ({error}). Showing demo data.
         </div>
       )}
+
+      {/* Feed Source Category Selector */}
+      <div className={styles.sourceSelector} role="tablist" aria-label="Select Feed Source">
+        <button
+          className={`${styles.sourceBtn} ${activeFeedSource === 'all' ? styles.activeSource : ''}`}
+          onClick={() => setActiveFeedSource('all')}
+        >
+          🔥 All Deals ({deals.filter(d => ALLOWED_STORES.includes(d.store)).length})
+        </button>
+        <button
+          className={`${styles.sourceBtn} ${activeFeedSource === 'telegram' ? styles.activeSource : ''}`}
+          onClick={() => setActiveFeedSource('telegram')}
+        >
+          ⚡ Live Telegram Loot ({deals.filter(d => ALLOWED_STORES.includes(d.store) && d.category !== 'cuelinks').length})
+        </button>
+        <button
+          className={`${styles.sourceBtn} ${activeFeedSource === 'cuelinks' ? styles.activeSource : ''}`}
+          onClick={() => setActiveFeedSource('cuelinks')}
+        >
+          🎁 Cuelinks Offers ({deals.filter(d => ALLOWED_STORES.includes(d.store) && d.category === 'cuelinks').length})
+        </button>
+      </div>
 
       {/* Controls bar */}
       <div className={styles.controls}>

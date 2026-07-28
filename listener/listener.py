@@ -204,6 +204,7 @@ async def handle_new_message(event):
             if deal is None:
                 log.warning("    ⚠️  Could not parse deal info — skipping")
                 continue
+            deal["category"] = "telegram"
 
             # 5. Enrich with real product data from the page ─────────────
             log.info(f"    🔍 Fetching product page...")

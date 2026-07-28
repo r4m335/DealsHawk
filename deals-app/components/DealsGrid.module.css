@@ -3,6 +3,44 @@
   width: 100%;
 }
 
+/* ─── Source Selector (Telegram vs Cuelinks) ─────────────────── */
+.sourceSelector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.sourceBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.sourceBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.activeSource {
+  background: var(--gradient-btn) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 16px rgba(255, 64, 96, 0.35);
+}
+
 /* ─── Error banner ────────────────────────────────────────── */
 .errorBanner {
   background: rgba(255, 64, 96, 0.08);
