@@ -24,6 +24,9 @@ import logging
 import os
 import sys
 
+import time
+import uuid
+
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -32,7 +35,7 @@ from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.types import MessageEntityUrl, MessageEntityTextUrl, PeerChannel
 
 from parser import extract_urls, detect_store, follow_redirects, parse_deal_from_text, is_generic_title
-from db import save_deal, deal_exists, health_check
+from db import save_deal, deal_exists, health_check, _get_client
 from affiliate import make_affiliate_url, is_configured as cuelinks_ready
 from enricher import fetch_product_details
 
@@ -210,6 +213,23 @@ async def handle_new_message(event):
                 deal["title"] = enriched["title"]
             if enriched.get("image_url"):
                 deal["image_url"] = enriched["image_url"]
+
+            # Fallback to Telegram photo attachment if web image is missing ───
+            if not deal.get("image_url") and msg.photo:
+                try:
+                    photo_bytes = await client.download_media(msg.photo, file=bytes)
+                    if photo_bytes:
+                        filename = f"deal_{int(time.time())}_{uuid.uuid4().hex[:6]}.jpg"
+                        db_client = _get_client()
+                        db_client.storage.from_("deal-images").upload(
+                            path=filename,
+                            file=photo_bytes,
+                            file_options={"content-type": "image/jpeg"}
+                        )
+                        deal["image_url"] = f"{os.environ['SUPABASE_URL']}/storage/v1/object/public/deal-images/{filename}"
+                        log.info("    📷 Uploaded Telegram photo to Supabase Storage")
+                except Exception as photo_exc:
+                    log.debug(f"    Telegram photo upload skipped: {photo_exc}")
             if enriched.get("discounted_price"):
                 deal["discounted_price"] = enriched["discounted_price"]
             if enriched.get("original_price"):

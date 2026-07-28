@@ -146,6 +146,18 @@ def _is_valid_image_url(url: str) -> bool:
     return not any(j in u for j in junk)
 
 
+_AMAZON_ASIN_RE = re.compile(r'/(?:dp|gp/product|product)/([A-Z0-9]{10})', re.IGNORECASE)
+
+
+def _get_amazon_asin_image(url: str) -> Optional[str]:
+    """Extract Amazon ASIN from URL and return direct high-res Amazon CDN image URL."""
+    match = _AMAZON_ASIN_RE.search(url)
+    if match:
+        asin = match.group(1).upper()
+        return f"https://images-na.ssl-images-amazon.com/images/P/{asin}.01._SCLZZZZZZZ_.jpg"
+    return None
+
+
 # ─────────────────────────────────────────────────────────────
 #  Public API
 # ─────────────────────────────────────────────────────────────
@@ -159,6 +171,13 @@ async def fetch_product_details(url: str, store: str) -> dict:
 
     Returns {} on any failure — the caller falls back to text-parsed data.
     """
+    result: dict = {}
+
+    # ── Instant Amazon ASIN CDN image check ─────────────────
+    if store == "amazon":
+        asin_img = _get_amazon_asin_image(url)
+        if asin_img:
+            result["image_url"] = asin_img
     try:
         async with httpx.AsyncClient(
             follow_redirects=True,
@@ -169,11 +188,10 @@ async def fetch_product_details(url: str, store: str) -> dict:
 
         if resp.status_code != 200:
             log.debug(f"    Enricher HTTP {resp.status_code} for {url[:60]}")
-            return {}
+            return result
 
         html  = resp.text
         soup  = BeautifulSoup(html, "lxml")
-        result: dict = {}
 
         # ── 1. Open Graph / Page title ──────────────────────────
         candidate_title = None
@@ -216,7 +234,7 @@ async def fetch_product_details(url: str, store: str) -> dict:
                     candidate_img = src.strip()
                     break
 
-        if candidate_img:
+        if candidate_img and "image_url" not in result:
             if candidate_img.startswith("//"):
                 candidate_img = "https:" + candidate_img
             result["image_url"] = candidate_img
@@ -249,4 +267,4 @@ async def fetch_product_details(url: str, store: str) -> dict:
 
     except Exception as exc:
         log.debug(f"    Enricher failed for {url[:60]}: {exc}")
-        return {}
+        return result
