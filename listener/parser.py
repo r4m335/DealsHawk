@@ -150,6 +150,24 @@ def _extract_title(text: str) -> Optional[str]:
     return None
 
 
+def is_generic_title(title: Optional[str]) -> bool:
+    if not title:
+        return True
+    t = title.strip().lower()
+    if len(t) < 5:
+        return True
+    generics = [
+        "amazon.in", "amazon", "flipkart.com", "flipkart", "myntra", "ajio",
+        "online shopping site", "buy products online", "shopping india",
+        "404", "not found", "robot check", "access denied", "page not found",
+        "deal from amazon", "deal from flipkart", "deal from myntra", "deal from ajio", "deal from other"
+    ]
+    for g in generics:
+        if t == g or t.startswith(g + " :") or t.startswith(g + ":") or t.startswith(g + " -") or t.startswith(g + " —"):
+            return True
+    return False
+
+
 def parse_deal_from_text(
     text: str,
     affiliate_url: str,
@@ -159,10 +177,13 @@ def parse_deal_from_text(
     Parse a Telegram message and return a deal dict ready for Supabase INSERT.
     Returns None if not enough info could be extracted.
     """
+    # Strip hidden unicode formatting marks (e.g. \u200e LTR, \u200f RTL, \u200b ZWSP, \xa0 NBSP)
+    text = re.sub(r'[\u200e\u200f\u200b\u200c\u200d\uFEFF\xa0]', '', text)
+
     # ── Title ──────────────────────────────────────────────
     title = _extract_title(text)
-    if not title:
-        title = f"Deal from {store.capitalize()}"
+    if not title or is_generic_title(title):
+        title = None
 
     # ── Prices ─────────────────────────────────────────────
     raw_prices = PRICE_RE.findall(text) or PRICE_RE2.findall(text)

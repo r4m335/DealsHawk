@@ -31,7 +31,7 @@ from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.types import MessageEntityUrl, MessageEntityTextUrl, PeerChannel
 
-from parser import extract_urls, detect_store, follow_redirects, parse_deal_from_text
+from parser import extract_urls, detect_store, follow_redirects, parse_deal_from_text, is_generic_title
 from db import save_deal, deal_exists, health_check
 from affiliate import make_affiliate_url, is_configured as cuelinks_ready
 from enricher import fetch_product_details
@@ -228,6 +228,18 @@ async def handle_new_message(event):
             deal["affiliate_url"] = affiliate_url
             if affiliate_url != final_url:
                 log.info(f"    💰 Affiliate link ready")
+
+            # 6.5 Quality Check — Skip deals without valid title or price ─
+            deal_title = deal.get("title")
+            deal_price = deal.get("discounted_price", 0)
+
+            if not deal_title or is_generic_title(deal_title):
+                log.warning(f"    ⏭  Skipping deal with generic/missing title: {deal_title!r}")
+                continue
+
+            if not deal_price or deal_price <= 0:
+                log.warning(f"    ⏭  Skipping deal without valid price (Price: ₹{deal_price})")
+                continue
 
             log.info(
                 f"    📝 Title:    {deal['title'][:60]}\n"
