@@ -28,16 +28,16 @@ def extract_urls(text: str) -> list:
 # ─────────────────────────────────────────────────────────────
 
 STORE_MAP = {
-    "amazon":   [r"amazon\.in", r"amzn\.in", r"amzn\.to", r"amazon\.com/dp"],
-    "flipkart": [r"flipkart\.com", r"fkrt\.it", r"dl\.flipkart\.com"],
-    "myntra":   [r"myntra\.com"],
-    "ajio":     [r"ajio\.com"],
+    "amazon":   [r"amazon\.in", r"amzn\.in", r"amzn\.to", r"amazn\.lt", r"amazon\.com"],
+    "flipkart": [r"flipkart\.com", r"fkrt\.it", r"fkrt\.to", r"fkrt\.link", r"dl\.flipkart\.com"],
+    "myntra":   [r"myntra\.com", r"myntr\.in"],
+    "ajio":     [r"ajio\.com", r"ajio\.in"],
 }
 
 def detect_store(url: str) -> str:
     """
     Return the store name for a URL, or 'other' if not recognised.
-    Checked in priority order so amazon.in always wins over generic .in TLD.
+    Checked in priority order.
     """
     for store, patterns in STORE_MAP.items():
         for pattern in patterns:
@@ -54,37 +54,30 @@ _HTTP_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0 Safari/537.36"
+        "Chrome/124.0.0.0 Safari/537.36"
     ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-IN,en;q=0.9",
 }
 
-async def follow_redirects(url: str, max_redirects: int = 10) -> str:
+async def follow_redirects(url: str, max_redirects: int = 8) -> str:
     """
     Follow all redirects for a shortlink and return the final destination URL.
-    Deal channels commonly use amzn.to, fkrt.it, etc.
-    Falls back to the original URL on any error.
+    Fast direct GET with a 6s timeout so worker threads never hang.
+    Falls back to original URL on timeout or error.
     """
     try:
         async with httpx.AsyncClient(
             follow_redirects=True,
             max_redirects=max_redirects,
-            timeout=httpx.Timeout(10.0, connect=5.0),
+            timeout=httpx.Timeout(6.0, connect=3.0),
             headers=_HTTP_HEADERS,
         ) as client:
-            # Try HEAD first (faster, no body download)
-            try:
-                resp = await client.head(url)
-                return str(resp.url)
-            except httpx.HTTPStatusError:
-                pass
-
-            # Some servers reject HEAD — fall back to GET
             resp = await client.get(url)
             return str(resp.url)
 
     except Exception as exc:
-        log.debug(f"Redirect follow failed for {url}: {exc}")
+        log.debug(f"Redirect follow failed for {url[:60]}: {exc}")
         return url
 
 
