@@ -361,8 +361,21 @@ async def main():
     log.info("✅ Supabase connected")
 
     # Start Telegram client
-    await client.start(phone=PHONE if not STRING_SESSION else None)
-    log.info("✅ Telegram connected")
+    if STRING_SESSION:
+        # StringSession is already authenticated — just connect, don't call start()
+        # (start() demands a phone/bot_token even when the session is valid)
+        await client.connect()
+        if not await client.is_user_authorized():
+            log.critical(
+                "StringSession is invalid or expired. "
+                "Re-run `python auth.py` to generate a fresh session."
+            )
+            sys.exit(1)
+        log.info("✅ Telegram connected (StringSession)")
+    else:
+        # Local mode — start() handles interactive phone/code auth
+        await client.start(phone=PHONE)
+        log.info("✅ Telegram connected (local session)")
 
     me = await client.get_me()
     log.info(f"✅ Logged in as: {me.first_name} (@{me.username or me.id})")
