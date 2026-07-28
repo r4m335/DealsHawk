@@ -201,9 +201,11 @@ def parse_deal_from_text(
     if d_matches:
         discount_pct = int(d_matches[0])
 
-    # Compute from prices if not found in text
+    # Compute discount % if not in text, or calculate original_price if discount % exists
     if discount_pct is None and original_price and discounted_price and original_price > discounted_price:
         discount_pct = round((original_price - discounted_price) / original_price * 100)
+    elif original_price is None and discounted_price and discount_pct and 0 < discount_pct < 100:
+        original_price = round(discounted_price / (1 - (discount_pct / 100)))
 
     # ── Hot deal flag ──────────────────────────────────────
     is_hot = (discount_pct or 0) >= 60
