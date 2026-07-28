@@ -38,6 +38,7 @@ from parser import extract_urls, detect_store, follow_redirects, parse_deal_from
 from db import save_deal, deal_exists, health_check, _get_client
 from affiliate import make_affiliate_url, is_configured as cuelinks_ready
 from enricher import fetch_product_details
+from cuelinks_feed import fetch_and_sync_cuelinks_deals
 
 # ── Load env ─────────────────────────────────────────────────
 load_dotenv()
@@ -442,6 +443,16 @@ async def main():
         handle_new_message,
         events.NewMessage(chats=valid_entity_ids),
     )
+
+    # ── Background task: Sync Cuelinks Feed Deals every hour ──────
+    async def _cuelinks_cron():
+        # First sync on startup
+        await fetch_and_sync_cuelinks_deals(50)
+        while True:
+            await asyncio.sleep(3600)  # repeat every hour
+            await fetch_and_sync_cuelinks_deals(50)
+
+    asyncio.create_task(_cuelinks_cron())
 
     print()
     log.info("👂 Listening for new deals... Press Ctrl+C to stop.")
