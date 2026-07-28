@@ -48,10 +48,33 @@ export default function DealCard({ deal }) {
             alt={deal.title}
             className={styles.image}
             loading="lazy"
+            onError={(e) => {
+              // Hide broken image link and fall back gracefully
+              e.currentTarget.style.display = 'none';
+            }}
           />
-        ) : (
-          <div className={styles.image} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '0.85rem' }}>
-            No Image
+        ) : null}
+        {(!imageUrl) && (
+          <div
+            className={styles.image}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: `radial-gradient(circle at center, ${store.color}15 0%, rgba(15, 23, 42, 0.95) 100%)`,
+              borderBottom: `1px solid ${store.color}33`,
+              padding: '1rem',
+              textAlign: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            <span style={{ fontSize: '2rem', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))' }}>
+              {deal.store === 'amazon' ? '📦' : deal.store === 'flipkart' ? '⚡' : deal.store === 'myntra' ? '🛍️' : deal.store === 'ajio' ? '✨' : '🔥'}
+            </span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: store.color, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              {store.label} Deal
+            </span>
           </div>
         )}
       </div>

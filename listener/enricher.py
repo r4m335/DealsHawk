@@ -121,6 +121,31 @@ def _prices_from_jsonld(html: str) -> list:
     return prices
 
 
+def _is_generic_title(title: str) -> bool:
+    if not title:
+        return True
+    t = title.strip().lower()
+    if len(t) < 5:
+        return True
+    generics = [
+        "amazon.in", "amazon", "flipkart.com", "flipkart", "myntra", "ajio",
+        "online shopping site", "buy products online", "shopping india",
+        "404", "not found", "robot check", "access denied", "page not found"
+    ]
+    for g in generics:
+        if t == g or t.startswith(g + " :") or t.startswith(g + ":") or t.startswith(g + " -") or t.startswith(g + " —"):
+            return True
+    return False
+
+
+def _is_valid_image_url(url: str) -> bool:
+    if not url or len(url) < 10:
+        return False
+    u = url.lower()
+    junk = ["1x1", "grey-pixel", "transparent-pixel", "sprite", "favicon", "loader.gif", "blank.gif", "placeholder"]
+    return not any(j in u for j in junk)
+
+
 # ─────────────────────────────────────────────────────────────
 #  Public API
 # ─────────────────────────────────────────────────────────────
@@ -150,30 +175,51 @@ async def fetch_product_details(url: str, store: str) -> dict:
         soup  = BeautifulSoup(html, "lxml")
         result: dict = {}
 
-        # ── 1. Open Graph title ───────────────────────────────
+        # ── 1. Open Graph / Page title ──────────────────────────
+        candidate_title = None
         og_title = soup.find("meta", property="og:title")
         if og_title and og_title.get("content"):
-            result["title"] = og_title["content"].strip()[:220]
-
-        # Fallback title: <title> tag
-        if "title" not in result:
+            candidate_title = og_title["content"].strip()[:220]
+        else:
             tag = soup.find("title")
             if tag and tag.string:
                 raw = tag.string.strip()
-                # Strip store-name suffix common on Amazon/Flipkart
                 for suffix in [" - Amazon.in", " | Flipkart.com", " - Myntra", " | AJIO"]:
                     raw = raw.replace(suffix, "")
-                if len(raw) > 5:
-                    result["title"] = raw[:220]
+                candidate_title = raw[:220]
 
-        # ── 2. Open Graph image ───────────────────────────────
-        og_image = soup.find("meta", property="og:image")
-        if og_image and og_image.get("content"):
-            img = og_image["content"]
-            # Ensure it's a full URL
-            if img.startswith("//"):
-                img = "https:" + img
-            result["image_url"] = img
+        if candidate_title and not _is_generic_title(candidate_title):
+            result["title"] = candidate_title
+
+        # ── 2. Product Image ──────────────────────────────────
+        candidate_img = None
+        # Try meta tags first
+        for meta_prop in ["og:image", "twitter:image", "og:image:secure_url"]:
+            el = soup.find("meta", property=meta_prop) or soup.find("meta", attrs={"name": meta_prop})
+            if el and el.get("content") and _is_valid_image_url(el["content"]):
+                candidate_img = el["content"].strip()
+                break
+
+        # Fallback 1: Amazon product image selectors
+        if not candidate_img and store == "amazon":
+            for img_el in soup.select("#landingImage, #imgBlkFront, #imgTagWrapperId img, img.s-image"):
+                src = img_el.get("src") or img_el.get("data-old-hires")
+                if src and _is_valid_image_url(src):
+                    candidate_img = src.strip()
+                    break
+
+        # Fallback 2: Flipkart product image selectors
+        if not candidate_img and store == "flipkart":
+            for img_el in soup.select("img._396cs4, img._2r_T1I, img._53v2, img[src*='flixcart.com']"):
+                src = img_el.get("src")
+                if src and _is_valid_image_url(src):
+                    candidate_img = src.strip()
+                    break
+
+        if candidate_img:
+            if candidate_img.startswith("//"):
+                candidate_img = "https:" + candidate_img
+            result["image_url"] = candidate_img
 
         # ── 3. Prices ─────────────────────────────────────────
         # Try JSON-LD first (most structured)

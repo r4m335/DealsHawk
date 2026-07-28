@@ -92,9 +92,15 @@ async def follow_redirects(url: str, max_redirects: int = 10) -> str:
 #  Text parsing — extract title, prices, discount
 # ─────────────────────────────────────────────────────────────
 
-# Matches ₹999, Rs 999, Rs.999, INR 999  (with optional commas)
+# Matches ₹999, Rs 999, Rs.999, INR 999, @149, at 149, price: 149, starts @149
 PRICE_RE = re.compile(
-    r'(?:₹|Rs\.?\s*|INR\s*)(\d[\d,]*)',
+    r'(?:₹|Rs\.?\s*|INR\s*|@\s*|(?:price|at|just|only|flat|starts?|start)\s*@?\s*:?\s*)(\d[\d,]*)',
+    re.IGNORECASE,
+)
+
+# Matches 149/- or 149 rs
+PRICE_RE2 = re.compile(
+    r'(\d[\d,]*)\s*(?:/-|\s*rs|\s*rupees)',
     re.IGNORECASE,
 )
 
@@ -119,7 +125,7 @@ def _clean_price(raw: str) -> int:
 def _extract_title(text: str) -> Optional[str]:
     """
     Return the best title line from the message.
-    Strategy: first non-URL, non-empty line with >10 chars after stripping emojis.
+    Strategy: first non-URL, non-empty line with >=6 chars after stripping emojis and links.
     """
     # Strip leading emoji / symbol clusters
     emoji_prefix = re.compile(r'^[\U0001F000-\U0001FFFF\u2600-\u26FF\u2700-\u27BF\s📢🔔💥🚨🔥⚡🎯✅❗]+')
@@ -130,11 +136,15 @@ def _extract_title(text: str) -> Optional[str]:
             continue
         if line.startswith("http"):
             continue
+        # Remove URLs embedded in the line (e.g. "Master Link : https://...")
+        cleaned = re.sub(r'https?://\S+', '', line).strip()
         # Remove leading emoji noise
-        cleaned = emoji_prefix.sub("", line).strip()
+        cleaned = emoji_prefix.sub("", cleaned).strip()
+        # Remove trailing "Master Link :" or similar label remnants
+        cleaned = re.sub(r'(?:master\s*link|buy\s*here|link|deal\s*link)\s*:?\s*$', '', cleaned, flags=re.IGNORECASE).strip()
         # Remove hashtags
         cleaned = re.sub(r"#\w+", "", cleaned).strip()
-        if len(cleaned) >= 8:
+        if len(cleaned) >= 6:
             return cleaned[:220]
 
     return None
@@ -155,10 +165,10 @@ def parse_deal_from_text(
         title = f"Deal from {store.capitalize()}"
 
     # ── Prices ─────────────────────────────────────────────
-    raw_prices = PRICE_RE.findall(text)
+    raw_prices = PRICE_RE.findall(text) or PRICE_RE2.findall(text)
     prices = [_clean_price(p) for p in raw_prices]
-    # Remove obviously wrong values (e.g. year-like numbers)
-    prices = [p for p in prices if 10 < p < 10_000_000]
+    # Remove obviously wrong values (e.g. year-like numbers like 2024, 2025, 2026)
+    prices = [p for p in prices if 10 < p < 10_000_000 and p not in (2024, 2025, 2026)]
 
     original_price   = None
     discounted_price = None
